@@ -1,0 +1,14 @@
+#cloud-config
+hostname: <name>
+manage_etc_hosts: true
+users:
+  - name: <user>
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
+    lock_passwd: false
+chpasswd:
+  list: |
+    <user>:<password>
+  expire: False
+ssh_pwauth: true

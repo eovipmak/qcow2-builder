@@ -1,0 +1,23 @@
+// Patch policy template — copy to images/<name>/50unattended-upgrades and
+// point DIB_DEB_UPDATES_CONF at it. See images/debian-12/50unattended-upgrades
+// for the policy this repo ships, and docs/debian-12.md for what each key does.
+//
+// RHEL-family images use dnf automatic.conf instead (DIB_YUM_UPDATES_CONF).
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+};
+
+// Keep false for CloudStack: the platform owns stop/start and reboot.
+Unattended-Upgrade::Automatic-Reboot "false";
+
+Unattended-Upgrade::DevRelease "false";
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "false";
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";
+
+// Global `Acquire::` keys (Dl-Limit and friends) do not belong here: this file
+// is copied into the target rootfs before build-time apt runs, so they throttle
+// the build itself. Use a post-install.d hook for guest-side apt tuning.

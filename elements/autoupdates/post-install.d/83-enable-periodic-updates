@@ -1,0 +1,26 @@
+#!/bin/bash
+# LOCAL ADDITION — not part of upstream diskimage-builder's autoupdates element.
+#
+# Upstream only enables unattended-upgrades.service, which is a oneshot that
+# nothing triggers on a schedule. The actual daily driver on Debian is
+# apt-daily.timer / apt-daily-upgrade.timer running /usr/lib/apt/apt.systemd.daily,
+# and every APT::Periodic knob in that script defaults to "0" (disabled).
+# Without these keys the timers fire and do nothing, so this hook is what
+# makes automatic updates real.
+
+if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::Download-Only-Upgrade "0";
+APT::Periodic::AutocleanInterval "7";
+EOF
+
+# Enabled in the stock image already, but assert it so the template does not
+# depend on apt's packaging defaults.
+systemctl enable apt-daily.timer apt-daily-upgrade.timer

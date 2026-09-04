@@ -1,0 +1,9 @@
+*.qcow2
+*.md5
+*.sha256
+*.iso
+*.log
+build/
+images/*/*.d/
+seed.iso
+vm-serial.log
