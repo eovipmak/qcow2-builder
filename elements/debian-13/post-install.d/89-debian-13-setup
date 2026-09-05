@@ -1,0 +1,89 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# Timezone (chrony reads /etc/timezone + /etc/localtime)
+ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
+echo "Asia/Ho_Chi_Minh" > /etc/timezone
+
+# Root SSH login
+sed -i -E 's/^#?PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config
+if ! grep -qE '^PermitRootLogin' /etc/ssh/sshd_config; then
+    echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+fi
+
+# Allow cloud-init to manage the root account (default user is root).
+# ssh_pwauth:true comes from the seed user-data at first boot.
+if [ -f /etc/cloud/cloud.cfg ]; then
+    sed -i -E 's/^(disable_root:[[:space:]]*).*/\1false/' /etc/cloud/cloud.cfg
+    if ! grep -qE '^disable_root:' /etc/cloud/cloud.cfg; then
+        printf '\ndisable_root: false\n' >> /etc/cloud/cloud.cfg
+    fi
+fi
+
+# CloudStack datasource: ConfigDrive first (network config), then the
+# virtual-router metadata service, NoCloud for the local seed.iso boot-test,
+# None as the empty fallback. Without this the image relies on ds-identify
+# autodetection only.
+cat > /etc/cloud/cloud.cfg.d/99_cloudstack.cfg <<'EOF'
+datasource_list: [ConfigDrive, CloudStack, NoCloud, None]
+datasource:
+  CloudStack: {}
+  None: {}
+EOF
+
+# Single owner for interface configuration.
+#
+# dhcp-all-interfaces appends `auto <nic>/iface <nic> inet dhcp` stanzas to
+# /etc/network/interfaces, while cloud-init independently renders the
+# datasource's network config to /etc/network/interfaces.d/50-cloud-init. Both
+# files are read by ifupdown (`source /etc/network/interfaces.d/*`), so the same
+# NIC is brought up twice and runs dhclient twice -> one interface with two IPv4
+# leases (and a duplicate `auto lo`).
+#
+# CloudStack's virtual router already hands out address + DNS + domain over
+# DHCP, so the datasource's rendered config adds nothing but the collision.
+# Keep dhcp-all-interfaces (it copes with unknown NIC names: eth0 / ens18 /
+# enp1s0) and stop cloud-init from writing a second config.
+cat > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg <<'EOF'
+network: {config: disabled}
+EOF
+
+# CloudStack images are root-only, so disable the default user creation.
+cat > /etc/cloud/cloud.cfg.d/98_user.cfg <<'EOF'
+system_info:
+  default_user:
+    name: root
+EOF
+
+# CloudStack password management (GUI-set + reset) requires set-passwords to
+# run on every boot, not just first boot.
+sed -i -E 's/^ - set-passwords$/ - [set_passwords, always]/' /etc/cloud/cloud.cfg
+# DIB's debian element (install.d/10-cloud-opinions) creates a `debian` user
+# plus a NOPASSWD sudoers drop-in. This template is root-only, so drop it.
+if id debian >/dev/null 2>&1; then
+    userdel -r debian 2>/dev/null || userdel debian 2>/dev/null || true
+    rm -f /etc/sudoers.d/debian-cloud-init
+    groupdel debian 2>/dev/null || true
+fi
+
+systemctl enable ssh.service
+systemctl enable cloud-config.service
+systemctl enable cloud-final.service
+systemctl enable cloud-init-local.service
+# trixie ships cloud-init 25.x, which split cloud-init.service into
+# cloud-init-main + cloud-init-network.
+if [ -f /usr/lib/systemd/system/cloud-init-main.service ] \
+    || [ -f /lib/systemd/system/cloud-init-main.service ]; then
+    systemctl enable cloud-init-main.service
+    systemctl enable cloud-init-network.service
+else
+    systemctl enable cloud-init.service
+fi
+systemctl enable chrony.service
+systemctl enable auditd.service
+systemctl enable sysstat.service

@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# gentoo
+if [[ "${DIB_INIT_SYSTEM}" == "openrc" ]]; then
+    rc-update add cloud-config default
+    rc-update add cloud-final default
+    rc-update add cloud-init-local boot
+    rc-update add cloud-init default
+fi
+
+if [[ "${DIB_INIT_SYSTEM}" == "systemd" ]]; then
+    systemctl enable cloud-config.service
+    systemctl enable cloud-final.service
+    systemctl enable cloud-init-local.service
+    # cloud-init >= 25 (trixie) split cloud-init.service into
+    # cloud-init-main + cloud-init-network; enabling the old name 404s.
+    # Enable whichever generation is actually shipped (file check: this
+    # hook runs in the chroot, so absolute paths are the target root).
+    if [ -f /usr/lib/systemd/system/cloud-init-main.service ] \
+        || [ -f /lib/systemd/system/cloud-init-main.service ]; then
+        systemctl enable cloud-init-main.service
+        systemctl enable cloud-init-network.service
+    else
+        systemctl enable cloud-init.service
+    fi
+fi

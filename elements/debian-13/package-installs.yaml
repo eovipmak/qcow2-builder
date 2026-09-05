@@ -1,0 +1,18 @@
+grub-efi-amd64-signed:
+  arch: amd64
+shim-signed:
+  arch: amd64
+openssh-server:
+qemu-guest-agent:
+chrony:
+curl:
+git:
+vim:
+nano:
+ncdu:
+net-tools:
+auditd:
+sysstat:
+cloud-init:
+cloud-guest-utils:
+dosfstools:

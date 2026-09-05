@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# Bullseye's shim-signed (15.8) drops \EFI\BOOT\fbx64.efi (fallback.efi) onto
+# the ESP removable path; bookworm/trixie (shim 16.x) do not. When OVMF boots
+# the fallback entry, shim 15.8 hands off to fbx, which resets the machine
+# before GRUB ever prints — an immediate "BdsDxe ... Reset System" loop, with
+# and without Secure Boot. MBR/BIOS never executes the ESP, which is why only
+# debian-11 + UEFI loops. fbx only repairs NVRAM boot entries (useless on a
+# template image with no NVRAM); shim + grub + MokManager stay untouched.
+rm -f /boot/efi/EFI/BOOT/fbx64.efi /boot/efi/EFI/debian/fbx64.efi

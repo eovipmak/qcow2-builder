@@ -1,0 +1,32 @@
+// Patch policy for the debian-13 CloudStack template.
+// Injected at /etc/apt/apt.conf.d/50unattended-upgrades by the autoupdates
+// element (DIB_DEB_UPDATES_CONF in distro.env).
+//
+// Security-only: point releases from trixie main are deliberately NOT
+// auto-installed, so a template cannot silently gain a new glibc or kernel
+// mid-service. Widen it by uncommenting the -updates / main lines.
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+//  "${distro_id}:${distro_codename}-updates";
+//  "${distro_id}:${distro_codename}";
+};
+
+// CloudStack owns the instance lifecycle. A surprise reboot from inside the
+// guest fights the platform's stop/start and console semantics, so an applied
+// patch that needs a reboot simply waits for an operator-issued reboot.
+Unattended-Upgrade::Automatic-Reboot "false";
+
+Unattended-Upgrade::DevRelease "false";
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+// Keep autoremove off: it can pull kernels and hypervisor-facing packages.
+Unattended-Upgrade::Remove-Unused-Dependencies "false";
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";
+
+// Do NOT add global `Acquire::` keys here (e.g. Acquire::http::Dl-Limit).
+// root.d/61 copies this file into the target rootfs BEFORE the chroot's
+// install.d phase runs, so build-time apt reads it too — a Dl-Limit here
+// throttled a 100 MB build to 70 KB/s (~25 min). Guest-side bandwidth shaping
+// belongs in a post-install.d hook, which runs after the packages are in.

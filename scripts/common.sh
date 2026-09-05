@@ -19,6 +19,13 @@ load_distro() {
   if [ -n "${DIB_YUM_UPDATES_CONF:-}" ]; then
     export DIB_YUM_UPDATES_CONF
   fi
+  # Per-distro apt source override (DIB 3.29 defaults go stale: trixie
+  # security moved to the -security suite path, bullseye-backports was
+  # removed from the main mirror). debian-minimal's environment.d only
+  # fills DIB_APT_SOURCES_CONF when unset, so an exported value wins.
+  if [ -n "${DIB_APT_SOURCES_CONF:-}" ]; then
+    export DIB_APT_SOURCES_CONF
+  fi
 }
 
 build_image() {

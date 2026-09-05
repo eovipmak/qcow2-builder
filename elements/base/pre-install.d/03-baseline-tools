@@ -1,0 +1,23 @@
+#!/bin/bash
+# Install baseline packages and tools.
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+case $DISTRO_NAME in
+    'ubuntu'|'debian')
+        # Note: add-apt-repository would be nice for RPM platforms too - so when we
+        # need something like it, create a wrapper in dpkg/bin and fedora/bin.
+        apt-get -y update
+        # trixie dropped software-properties-common entirely (no add-apt-repository;
+        # nothing else in DIB calls it), so installing it 404s the whole build.
+        if [ "${DIB_RELEASE:-}" = "trixie" ]; then
+            install-packages apt-transport-https
+        else
+            install-packages software-properties-common apt-transport-https
+        fi
+        ;;
+esac

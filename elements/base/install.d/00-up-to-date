@@ -1,0 +1,13 @@
+#!/bin/bash
+# Fully upgrade everything on the system (if the package manager knows how to
+# do it).
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+if [ ${DIB_AVOID_PACKAGES_UPDATE} -eq 0 ]; then
+    install-packages -u
+fi
