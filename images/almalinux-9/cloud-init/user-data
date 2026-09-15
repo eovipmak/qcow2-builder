@@ -1,0 +1,14 @@
+#cloud-config
+hostname: almalinux-9
+manage_etc_hosts: true
+timezone: Asia/Ho_Chi_Minh
+users:
+  - name: root
+ssh_pwauth: true
+disable_root: false
+chpasswd:
+  list: |
+    root:root
+  expire: false
+allow_public_ssh_keys: true
+ssh_deletekeys: false

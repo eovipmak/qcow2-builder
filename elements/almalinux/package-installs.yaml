@@ -1,0 +1,13 @@
+openssh-server:
+qemu-guest-agent:
+chrony:
+curl:
+git:
+vim-enhanced:
+nano:
+net-tools:
+audit:
+sysstat:
+cloud-init:
+cloud-utils-growpart:
+dosfstools:

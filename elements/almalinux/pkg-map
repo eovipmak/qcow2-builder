@@ -1,0 +1,17 @@
+{
+  "default": {
+    "openssh-server": "openssh-server",
+    "qemu-guest-agent": "qemu-guest-agent",
+    "chrony": "chrony",
+    "curl": "curl",
+    "git": "git",
+    "vim-enhanced": "vim-enhanced",
+    "nano": "nano",
+    "net-tools": "net-tools",
+    "audit": "audit",
+    "sysstat": "sysstat",
+    "cloud-init": "cloud-init",
+    "cloud-utils-growpart": "cloud-utils-growpart",
+    "dosfstools": "dosfstools"
+  }
+}

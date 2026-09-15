@@ -1,0 +1,62 @@
+#!/bin/bash
+
+if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
+printf '%s\n' Asia/Ho_Chi_Minh > /etc/timezone
+
+sed -i -E 's/^#?PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config
+if ! grep -qE '^PermitRootLogin' /etc/ssh/sshd_config; then
+    printf '%s\n' 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+fi
+
+if [ -f /etc/cloud/cloud.cfg ]; then
+    sed -i -E 's/^(disable_root:[[:space:]]*).*/\1false/' /etc/cloud/cloud.cfg
+    if ! grep -qE '^disable_root:' /etc/cloud/cloud.cfg; then
+        printf '\ndisable_root: false\n' >> /etc/cloud/cloud.cfg
+    fi
+fi
+
+cat > /etc/cloud/cloud.cfg.d/99_cloudstack.cfg <<'EOF'
+datasource_list: [ConfigDrive, CloudStack, NoCloud, None]
+datasource:
+  CloudStack: {}
+  None: {}
+EOF
+
+cat > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg <<'EOF'
+network: {config: disabled}
+EOF
+
+cat > /etc/cloud/cloud.cfg.d/98_user.cfg <<'EOF'
+system_info:
+  default_user:
+    name: root
+EOF
+
+sed -i -E 's/^ - set-passwords$/ - [set_passwords, always]/' /etc/cloud/cloud.cfg
+
+if id almalinux >/dev/null 2>&1; then
+    userdel -r almalinux 2>/dev/null || userdel almalinux 2>/dev/null || true
+    rm -f /etc/sudoers.d/almalinux /etc/sudoers.d/90-cloud-init-users
+    groupdel almalinux 2>/dev/null || true
+fi
+
+systemctl enable sshd.service
+systemctl enable cloud-config.service
+systemctl enable cloud-final.service
+systemctl enable cloud-init-local.service
+if [ -f /usr/lib/systemd/system/cloud-init-main.service ] \
+    || [ -f /lib/systemd/system/cloud-init-main.service ]; then
+    systemctl enable cloud-init-main.service
+    systemctl enable cloud-init-network.service
+else
+    systemctl enable cloud-init.service
+fi
+systemctl enable chronyd.service
+systemctl enable auditd.service
+systemctl enable sysstat.service
