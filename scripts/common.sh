@@ -3,6 +3,42 @@ set -eu -o pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# This repo only supports UEFI Secure Boot templates. Fail fast on any
+# distro.env that tries to fall back to legacy BIOS (block-device-mbr,
+# missing block-device-efi/grub2, or empty/non-SecureBoot OVMF firmware).
+require_uefi_secure_boot() {
+  local fail=""
+  case " ${DIB_ELEMENTS:-} " in
+    *" block-device-efi "*) ;;
+    *) echo "ERROR: DIB_ELEMENTS must contain 'block-device-efi' (UEFI GPT+ESP, no BIOS/MBR fallback)" >&2; fail=1;;
+  esac
+  case " ${DIB_ELEMENTS:-} " in
+    *" grub2 "*) ;;
+    *) echo "ERROR: DIB_ELEMENTS must contain 'grub2' (signed grub/shim for Secure Boot)" >&2; fail=1;;
+  esac
+  case " ${DIB_ELEMENTS:-} " in
+    *" block-device-mbr "*) echo "ERROR: 'block-device-mbr' (legacy BIOS) is not supported" >&2; fail=1;;
+  esac
+  if [ -z "${UEFI_CODE:-}" ]; then
+    echo "ERROR: UEFI_CODE must be set to a *.secboot.fd firmware image (legacy BIOS not supported)" >&2; fail=1
+  elif [ ! -f "$UEFI_CODE" ]; then
+    # Firmware lives on the host, not in git: warn here so
+    # `bash -n`/lint still passes, fail at boot time below.
+    echo "WARNING: UEFI_CODE='$UEFI_CODE' not found on this host" >&2
+  elif [[ "$UEFI_CODE" != *secboot* ]]; then
+    echo "ERROR: UEFI_CODE='$UEFI_CODE' must be a Secure Boot firmware image (*.secboot.fd)" >&2; fail=1
+  fi
+  if [ -z "${UEFI_VARS_TEMPLATE:-}" ]; then
+    echo "ERROR: UEFI_VARS_TEMPLATE must be set (Secure Boot variables store, legacy BIOS not supported)" >&2; fail=1
+  elif [ ! -f "$UEFI_VARS_TEMPLATE" ]; then
+    echo "WARNING: UEFI_VARS_TEMPLATE='$UEFI_VARS_TEMPLATE' not found on this host" >&2
+  fi
+  if [ -n "$fail" ]; then
+    echo "ERROR: ${DISTRO_NAME:-unknown} is not a UEFI Secure Boot template — refusing to continue" >&2
+    return 1
+  fi
+}
+
 load_distro() {
   local name="$1"
   # shellcheck source=/dev/null
@@ -10,6 +46,7 @@ load_distro() {
   DISTRO_NAME="$name"
   BUILD_DIR="$REPO_ROOT/build/$OUTPUT"
   mkdir -p "$BUILD_DIR"
+  require_uefi_secure_boot
   export DIB_RELEASE
   export ARCH="${ARCH:-amd64}"
   # autoupdates' root.d hook reads these on the host, outside the chroot
@@ -29,6 +66,7 @@ load_distro() {
 }
 
 build_image() {
+  require_uefi_secure_boot
   # Prepend repo elements dir so custom elements resolve alongside builtins
   # (no trailing colon: empty ELEMENTS_PATH entries abort the build).
   if [ -n "${ELEMENTS_PATH:-}" ]; then
@@ -69,15 +107,24 @@ boot_vm() {
   rm -f "$overlay"
   qemu-img create -f qcow2 -b "$disk" -F "$TYPE" "$overlay" >/dev/null
   local qemu_args=(-enable-kvm -m "${MEM_MB:-2048}" -smp "${SMP:-2}" -cpu host)
-  if [ -n "${UEFI_CODE:-}" ] && [ -f "${UEFI_CODE:-}" ]; then
-    local vars_file="$BUILD_DIR/OVMF_VARS.fd"
-    if [ ! -f "$vars_file" ] || [ -n "${UEFI_VARS_TEMPLATE:-}" ] && [ "$UEFI_VARS_TEMPLATE" -nt "$vars_file" ]; then
-      cp "${UEFI_VARS_TEMPLATE:-/usr/share/OVMF/OVMF_VARS_4M.fd}" "$vars_file"
-    fi
-    qemu_args+=(-machine q35,smm=on -global driver=cfi.pflash01,property=secure,value=on)
-    qemu_args+=(-drive "if=pflash,format=raw,unit=0,file=${UEFI_CODE},readonly=on")
-    qemu_args+=(-drive "if=pflash,format=raw,unit=1,file=$vars_file")
+  # UEFI Secure Boot only — no legacy BIOS fallback. Missing firmware is a
+  # hard error here (the earlier check in require_uefi_secure_boot only warns
+  # so linting works on hosts without OVMF installed).
+  if [ -z "${UEFI_CODE:-}" ] || [ ! -f "${UEFI_CODE:-}" ]; then
+    echo "ERROR: UEFI_CODE='${UEFI_CODE:-}' missing — boot-test requires OVMF Secure Boot firmware" >&2
+    return 1
   fi
+  if [ -z "${UEFI_VARS_TEMPLATE:-}" ] || [ ! -f "${UEFI_VARS_TEMPLATE:-}" ]; then
+    echo "ERROR: UEFI_VARS_TEMPLATE='${UEFI_VARS_TEMPLATE:-}' missing — boot-test requires Secure Boot vars store" >&2
+    return 1
+  fi
+  local vars_file="$BUILD_DIR/OVMF_VARS.fd"
+  if [ ! -f "$vars_file" ] || [ "$UEFI_VARS_TEMPLATE" -nt "$vars_file" ]; then
+    cp "$UEFI_VARS_TEMPLATE" "$vars_file"
+  fi
+  qemu_args+=(-machine q35,smm=on -global driver=cfi.pflash01,property=secure,value=on)
+  qemu_args+=(-drive "if=pflash,format=raw,unit=0,file=${UEFI_CODE},readonly=on")
+  qemu_args+=(-drive "if=pflash,format=raw,unit=1,file=$vars_file")
   qemu_args+=(
     -device virtio-serial-pci
     -chardev "socket,id=qga0,path=$BUILD_DIR/qga.sock,server=on,wait=off"

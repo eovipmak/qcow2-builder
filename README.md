@@ -1,8 +1,10 @@
-# Disk Images (multi-distro, Debian-first)
+# Disk Images (multi-distro, Debian-first, UEFI Secure Boot only)
 
 Build bootable qcow2 images with `disk-image-create` + cloud-init NoCloud seed,
 boot-test with QEMU+VNC. Debian 12 is the reference; copy `images/_template/`
-for new distros.
+for new distros. Legacy BIOS is not supported: every template must use
+`block-device-efi + grub2` and `*.secboot.fd` OVMF firmware (enforced by
+`require_uefi_secure_boot` in `scripts/common.sh`).
 
 ## Quickstart
 

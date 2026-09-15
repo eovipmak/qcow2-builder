@@ -68,17 +68,18 @@ template covers `apt` (debian/ubuntu) and `dnf/yum` (rhel-family) via conditiona
 ```bash
 DISTRO=debian          # debian|ubuntu|rocky|fedora|centos
 DIB_RELEASE=bookworm   # bookworm|noble|9-stream|41 ...
-# Debian-family (UEFI + Secure Boot reference):
-#   "debian vm block-device-efi cloud-init grub2 dhcp-all-interfaces debian-12"
-# `vm` alone falls back to block-device-mbr (BIOS); block-device-efi gives
+# UEFI Secure Boot ONLY (no BIOS path): `vm` alone falls back to
+# block-device-mbr (BIOS) and is rejected; block-device-efi gives
 # GPT + ESP, no LVM, no swap; grub2 pulls signed grub/shim;
 # dhcp-all-interfaces is required or the guest never gets an IP.
-DIB_ELEMENTS="debian vm block-device-efi cloud-init grub2 dhcp-all-interfaces"  # rhel-family: "fedora vm cloud-init dhcp-all-interfaces"
+DIB_ELEMENTS="debian vm block-device-efi cloud-init grub2 dhcp-all-interfaces"  # rhel-family: "rocky vm block-device-efi cloud-init grub2 dhcp-all-interfaces"
 OUTPUT=<name>          # e.g. ubuntu-24.04
 TYPE=qcow2
 ARCH=amd64
 PACKAGES="vim,curl,htop"  # passed as -p, or via elements/<name>/package-installs.yaml
-# Boot-test firmware; set both for UEFI Secure Boot, leave "" for legacy BIOS
+# Boot-test firmware; UEFI Secure Boot ONLY (legacy BIOS not supported).
+# Both must be set: a *.secboot.fd CODE image + Secure Boot VARS store.
+# require_uefi_secure_boot in scripts/common.sh rejects empty values.
 UEFI_CODE=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd
 UEFI_VARS_TEMPLATE=/usr/share/OVMF/OVMF_VARS_4M.ms.fd
 ```
@@ -115,8 +116,8 @@ UEFI_VARS_TEMPLATE=/usr/share/OVMF/OVMF_VARS_4M.ms.fd
 2. `scripts/build-image.sh debian-12` produces `build/debian-12/debian-12.qcow2` with
    `dib_arguments` = `-o build/debian-12/debian-12 -t qcow2 -a amd64 debian vm
    block-device-efi cloud-init grub2 debian-12 --checksum` + `DIB_RELEASE=bookworm`
-3. Image-level checks (mount ESP/root, see `docs/debian-12.md`): GPT with ESP + BIOS-boot +
-   root only (no LVM, no swap); `fstab` has no swap line; `/etc/timezone` =
+3. Image-level checks (mount ESP/root, see `docs/debian-12.md`): GPT with ESP +
+   root only, UEFI-only (no MBR fallback; no LVM, no swap); `fstab` has no swap line; `/etc/timezone` =
    `Asia/Ho_Chi_Minh`; `PermitRootLogin yes`; all 12 requested packages present in the dpkg
    manifest; `cloud-init.*` + `ssh` + `chrony` + `auditd` + `sysstat` enabled; no `debian` user
 4. Secure Boot: ESP `/EFI/BOOT/BOOTX64.EFI` is byte-identical to `shimx64.efi.signed` and
