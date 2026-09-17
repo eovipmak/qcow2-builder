@@ -14,10 +14,8 @@ set -o pipefail
 # default upstream mirrorlist.
 dnf -y install epel-release
 
-# Point EPEL at the configured distribution mirror when one is set (EPEL has
-# its own mirror namespace: <mirror>/epel/<release>/Everything/x86_64/).
-if [ -n "${DIB_DISTRIBUTION_MIRROR:-}" ] && [ -f /etc/yum.repos.d/epel.repo ]; then
-    epel_base="${DIB_DISTRIBUTION_MIRROR%/}/epel/${DIB_RELEASE}/Everything/x86_64"
-    sed -i -e "s,^#baseurl=https://download.example/pub/epel,baseurl=$epel_base,;/^metalink=/d;/^mirrorlist=/d" /etc/yum.repos.d/epel.repo
-fi
+# Do not point EPEL at DIB_DISTRIBUTION_MIRROR: the ctrliq GCP Rocky mirror
+# does not host an EPEL tree (/pub/rocky/8/ has no epel/ directory), so any
+# baseurl override there 404s. EPEL therefore keeps its stock epel.repo
+# metalink/mirrorlist which resolves upstream.
 

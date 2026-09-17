@@ -10,6 +10,8 @@
       `DIB_ELEMENTS="ubuntu vm block-device-efi cloud-init grub2 dhcp-all-interfaces <custom>"` (`DIB_RELEASE=noble`)
       - `block-device-efi` = GPT + ESP, no LVM, no swap (required; `vm` alone falls back to MBR, which is rejected)
       - `grub2` = signed `grub-efi-amd64-signed` + `shim-signed` for UEFI Secure Boot (required)
+      - Keep `motd` in the element list: it writes `/etc/motd` so users see the
+        Vinahost Cloud banner at login (`elements/motd/post-install.d/95-motd`).
      - `dhcp-all-interfaces` = DHCP on every NIC at boot; without it the guest has
        no IP and the SSH boot-test fails with no error on the host side
      - Keep cloud-init's network rendering **disabled**

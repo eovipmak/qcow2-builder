@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# Login banner shown on every SSH/console session. Static file: Debian's
+# /etc/motd is plain text (no update-motd.d on this base) and RHEL does not
+# regenerate it at boot.
+cat > /etc/motd <<'EOF'
+Welcome to Vinahost Cloud Instance
+EOF

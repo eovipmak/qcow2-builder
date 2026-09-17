@@ -70,3 +70,8 @@ fi
 systemctl enable chronyd.service
 systemctl enable auditd.service
 systemctl enable sysstat.service
+
+# Red Hat line ships rpcbind enabled by default; images don't need NFS/RPC.
+systemctl stop rpcbind.socket rpcbind
+systemctl disable rpcbind.socket rpcbind
+systemctl mask rpcbind.socket rpcbind
