@@ -2,7 +2,7 @@
 # `default` resolves to system_info.default_user (root, cloud.cfg.d/98_user.cfg).
 # Naming root explicitly would replace cloud.cfg's `users: [default]`, leave no
 # user marked default, and make set_passwords drop the CloudStack `password:`.
-hostname: almalinux-9
+hostname: rocky-9
 manage_etc_hosts: true
 timezone: Asia/Ho_Chi_Minh
 users:

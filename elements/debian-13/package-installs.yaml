@@ -6,6 +6,7 @@ openssh-server:
 qemu-guest-agent:
 chrony:
 curl:
+wget:
 git:
 vim:
 nano:

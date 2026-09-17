@@ -1,0 +1,20 @@
+# Supported OS list
+# Generated from diskimage-builder 3.43.0 (installed via pip) + custom images in images/
+# disk-image-create --version -> 3.43.0
+
+[diskimage-builder native OS elements] (root.d bootstrap)
+centos
+fedora
+gentoo
+opensuse
+rhel
+ubuntu
+debian (via debootstrap element + DISTRO=debian)
+rocky / almalinux (via centos element + DISTRO=rocky / almalinux)
+
+[project custom images] (images/, element in elements/ + block-device-efi + grub2, UEFI Secure Boot only)
+almalinux-8
+almalinux-9
+debian-11
+debian-12
+debian-13

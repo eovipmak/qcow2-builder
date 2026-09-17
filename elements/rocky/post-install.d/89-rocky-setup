@@ -32,6 +32,14 @@ cat > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg <<'EOF'
 network: {config: disabled}
 EOF
 
+# CloudStack images are root-only. The default_user name is only consulted when
+# the cloud-config `users:` list carries a `default` entry: `/etc/cloud/cloud.cfg`
+# ships `users: [default]`, and an explicit `users: [{name: root}]` in the
+# seed/user-data replaces that list. With no user marked as default, the
+# CloudStack datasource `password:` (password server) is dropped by
+# set_passwords ("No default or defined user to change password for"), leaving
+# root locked. Keep the per-image user-data on `- default` (see
+# images/*/cloud-init/user-data).
 cat > /etc/cloud/cloud.cfg.d/98_user.cfg <<'EOF'
 system_info:
   default_user:
@@ -50,11 +58,7 @@ if ! grep -qE '^[[:space:]]*-[[:space:]]*\[set_passwords, always\][[:space:]]*$'
     exit 1
 fi
 
-if id almalinux >/dev/null 2>&1; then
-    userdel -r almalinux 2>/dev/null || userdel almalinux 2>/dev/null || true
-    rm -f /etc/sudoers.d/almalinux /etc/sudoers.d/90-cloud-init-users
-    groupdel almalinux 2>/dev/null || true
-fi
+# Rocky images are root-only; no default non-root user to clean up.
 
 systemctl enable sshd.service
 systemctl enable cloud-config.service

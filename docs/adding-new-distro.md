@@ -28,7 +28,14 @@
     - UEFI boot-test (mandatory): keep `UEFI_CODE=` (a `*.secboot.fd` image) +
       `UEFI_VARS_TEMPLATE=` (Secure Boot vars store) set — see `images/debian-12/distro.env`.
       Unset/empty values fail the build and boot-test; there is no legacy BIOS path.
-3. Edit `cloud-init/user-data` + `meta-data` (hostname, user, password)
+3. Edit `cloud-init/user-data` + `meta-data` (hostname, password).
+   Keep `users:` on `- default` (do **not** list `name: root`): cloud-init maps
+   `default` to the image's `system_info.default_user` (root, written by
+   `cloud.cfg.d/98_user.cfg`) and marks it as *the* default user. An explicit
+   `name: root` replaces `cloud.cfg`'s `users: [default]`, nothing is marked
+   default, and `set_passwords` silently drops the CloudStack datasource
+   `password:` ("No default or defined user to change password for"), leaving
+   root locked → no root login in CloudStack
 4. Optional custom packages: copy `elements/debian-12/` to `elements/<name>/`,
    edit `package-installs.yaml` (+ `pkg-map` for virtual names), add
    `post-install.d/89-<name>-setup` (executable, AFTER cloud-init's `20-` hooks),

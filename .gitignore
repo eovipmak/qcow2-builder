@@ -7,3 +7,4 @@ build/
 images/*/*.d/
 seed.iso
 vm-serial.log
+.venv

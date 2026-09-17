@@ -198,10 +198,11 @@ Seed content (`images/debian-12/cloud-init/`):
 
 ```yaml
 #cloud-config
+# `default` resolves to system_info.default_user (root, cloud.cfg.d/98_user.cfg)
 hostname: debian-12
 timezone: Asia/Ho_Chi_Minh
 users:
-  - name: root
+  - default
 ssh_pwauth: true
 disable_root: false
 chpasswd:

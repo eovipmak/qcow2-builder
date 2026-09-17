@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# ncdu lives in EPEL on Rocky/Alma. package-installs runs after this hook
+# (pre-install.d < install.d < post-install.d), so epel-release must be in
+# place before package-installs resolves `ncdu`.
+# Mirror the main repos the same way 00-set-rocky-mirror does when a custom
+# mirror is configured, so epel-release install does not depend on the
+# default upstream mirrorlist.
+dnf -y install epel-release
+
+# Point EPEL at the configured distribution mirror when one is set (EPEL has
+# its own mirror namespace: <mirror>/epel/<release>/Everything/x86_64/).
+if [ -n "${DIB_DISTRIBUTION_MIRROR:-}" ] && [ -f /etc/yum.repos.d/epel.repo ]; then
+    epel_base="${DIB_DISTRIBUTION_MIRROR%/}/epel/${DIB_RELEASE}/Everything/x86_64"
+    sed -i -e "s,^#baseurl=https://download.example/pub/epel,baseurl=$epel_base,;/^metalink=/d;/^mirrorlist=/d" /etc/yum.repos.d/epel.repo
+fi
+

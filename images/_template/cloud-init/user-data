@@ -1,12 +1,13 @@
 #cloud-config
 hostname: <name>
 manage_etc_hosts: true
+# Keep `default` (do NOT list `name: <user>`): cloud-init maps `default` to the
+# image's system_info.default_user (set by the element's cloud.cfg.d/98_user.cfg)
+# and marks it as the default user. Naming the user explicitly replaces
+# cloud.cfg's `users: [default]`, so nothing is marked default and set_passwords
+# silently drops the CloudStack datasource `password:` (password set/reset).
 users:
-  - name: <user>
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    groups: sudo
-    shell: /bin/bash
-    lock_passwd: false
+  - default
 chpasswd:
   list: |
     <user>:<password>

@@ -63,6 +63,11 @@ load_distro() {
   if [ -n "${DIB_APT_SOURCES_CONF:-}" ]; then
     export DIB_APT_SOURCES_CONF
   fi
+  # Rocky/Alma mirror override — DIB_DISTRIBUTION_MIRROR is consumed inside
+  # the chroot by rocky's pre-install.d/00-set-rocky-mirror hook.
+  if [ -n "${DIB_DISTRIBUTION_MIRROR:-}" ]; then
+    export DIB_DISTRIBUTION_MIRROR
+  fi
 }
 
 build_image() {

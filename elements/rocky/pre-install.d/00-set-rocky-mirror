@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+DIB_DISTRIBUTION_MIRROR=${DIB_DISTRIBUTION_MIRROR:-}
+
+[ -n "$DIB_DISTRIBUTION_MIRROR" ] || exit 0
+
+# Rocky 8 uses split repos (Rocky-*.repo), Rocky 9 uses rocky.repo / rocky-extras.repo
+if [[ ${DIB_RELEASE} == "8" ]]; then
+    for repo in Rocky-AppStream.repo Rocky-BaseOS.repo Rocky-Extras.repo; do
+        if [ -f "/etc/yum.repos.d/$repo" ]; then
+            sed -e "s,^#baseurl=http://dl.rockylinux.org/\$contentdir/,baseurl=$DIB_DISTRIBUTION_MIRROR/,;/^mirrorlist=/d" -i "/etc/yum.repos.d/$repo"
+            # also handle commented baseurl with https variant
+            sed -e "s,^#baseurl=https://dl.rockylinux.org/\$contentdir/,baseurl=$DIB_DISTRIBUTION_MIRROR/,;/^mirrorlist=/d" -i "/etc/yum.repos.d/$repo"
+        fi
+    done
+else
+    for repo in rocky.repo rocky-extras.repo rocky-addons.repo; do
+        if [ -f "/etc/yum.repos.d/$repo" ]; then
+            sed -e "s,^#baseurl=http://dl.rockylinux.org/\$contentdir/,baseurl=$DIB_DISTRIBUTION_MIRROR/,;/^mirrorlist=/d" -i "/etc/yum.repos.d/$repo"
+            sed -e "s,^#baseurl=https://dl.rockylinux.org/\$contentdir/,baseurl=$DIB_DISTRIBUTION_MIRROR/,;/^mirrorlist=/d" -i "/etc/yum.repos.d/$repo"
+        fi
+    done
+    # Rocky 9 also ships Rocky-*.repo symlinks in some snapshots; patch them too if present
+    for repo in Rocky-BaseOS.repo Rocky-AppStream.repo Rocky-Extras.repo; do
+        if [ -f "/etc/yum.repos.d/$repo" ]; then
+            sed -e "s,^#baseurl=http://dl.rockylinux.org/\$contentdir/,baseurl=$DIB_DISTRIBUTION_MIRROR/,;/^mirrorlist=/d" -i "/etc/yum.repos.d/$repo" || true
+        fi
+    done
+fi
+
+echo "Applied DIB_DISTRIBUTION_MIRROR=$DIB_DISTRIBUTION_MIRROR to yum repos for Rocky $DIB_RELEASE" >&2
+cat /etc/yum.repos.d/*.repo 2>&1 | grep -E "^baseurl|^mirrorlist" | head -n 20 >&2 || true
