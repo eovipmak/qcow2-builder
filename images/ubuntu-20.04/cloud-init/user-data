@@ -1,0 +1,17 @@
+#cloud-config
+# `default` resolves to system_info.default_user (root, cloud.cfg.d/98_user.cfg).
+# Naming root explicitly would replace cloud.cfg's `users: [default]`, leave no
+# user marked default, and make set_passwords drop the CloudStack `password:`.
+hostname: ubuntu-2004
+manage_etc_hosts: true
+timezone: Asia/Ho_Chi_Minh
+users:
+  - default
+ssh_pwauth: true
+disable_root: false
+chpasswd:
+  list: |
+    root:root
+  expire: false
+allow_public_ssh_keys: true
+ssh_deletekeys: false

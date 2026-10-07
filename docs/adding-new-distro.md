@@ -40,8 +40,10 @@
    root locked → no root login in CloudStack
 4. Optional custom packages: copy `elements/debian-12/` to `elements/<name>/`,
    edit `package-installs.yaml` (+ `pkg-map` for virtual names), add
-   `post-install.d/89-<name>-setup` (executable, AFTER cloud-init's `20-` hooks),
-   append `<name>` to `DIB_ELEMENTS` in `distro.env`
+    `post-install.d/89-<name>-setup` (executable, AFTER cloud-init's `20-` hooks),
+    append `<name>` to `DIB_ELEMENTS` in `distro.env`. Hook filenames must match
+    `^[0-9A-Za-z_-]+$` (no dots — `dib-run-parts` silently skips the rest, so
+    e.g. `89-ubuntu-2004-setup`, not `89-ubuntu-20.04-setup`).
 5. `scripts/build-image.sh <name>` → output lands in `build/<output>/`
 6. `scripts/make-seed.sh <name> && scripts/boot-vm.sh <name>` → SSH
    `ssh -p <SSH_PORT> <user>@localhost`, serial log in `build/<output>/vm-serial.log`

@@ -1,0 +1,7 @@
+{
+  "default": {
+    "grub_bios": "grub-pc-bin",
+    "signed_grub_efi": "grub-efi-amd64-signed",
+    "signed_shim_efi": "shim-signed"
+  }
+}
